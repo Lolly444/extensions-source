@@ -171,26 +171,24 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
-          path: main
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
-      - name: Generate and publish index
+      - name: Generate Index directly
         run: |
-          python -m pip install --upgrade pip
           pip install protobuf
-          python -u main/.github/scripts/publish-repo.py "" "$GITHUB_SHA" "true" || true
-          
-          if [ -d "repo" ] && [ -f "repo/index.json" ]; then
-            cp repo/index.json main/index.json
-          fi
+          python .github/scripts/publish-repo.py "" "$GITHUB_SHA" "true" || true
 
-          cd main
+      - name: Move index to root and push
+        run: |
+          if [ -d "repo" ] && [ -f "repo/index.json" ]; then
+            cp repo/index.json ./index.json
+          fi
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add index.json || true
           git commit -m "Update index.json" || echo "No changes"
-          git push
+          git push origin main || true
