@@ -155,7 +155,8 @@ jobs:
             **/build/outputs/jar/release/*.jar
             **/build/keiyoushi-source-info.json
           retention-days: 1
-   generate-index:
+
+  generate-index:
     name: Generate Index
     needs: build-extensions
     runs-on: ubuntu-latest
