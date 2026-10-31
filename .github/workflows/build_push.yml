@@ -109,4 +109,49 @@ jobs:
           for module in "${MODULES[@]}"; do
             TASKS+=("${module}:assembleDebug")
           done
-          ./gradlew "${TASKS
+          ./gradlew "${TASKS[@]}"
+
+  build-extensions:
+    name: Build extensions (${{ matrix.chunk.number }})
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ toJson(fromJson(needs.prepare.outputs.matrix).chunk) != '[]' }}
+    strategy:
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-read-only: true
+
+      - name: Build extensions (${{ matrix.chunk.number }})
+        env:
+          MODULES: ${{ join(matrix.chunk.modules, ' ') }}
+        run: |
+          TASKS=()
+          for module in $MODULES; do
+            TASKS+=("${module}:assembleDebug")
+          done
+          ./gradlew "${TASKS[@]}"
+
+      - name: Upload APKs (${{ matrix.chunk.number }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: "individual-apks-${{ matrix.chunk.number }}"
+          path: |
+            **/build/outputs/apk/debug/*.apk
+            **/build/outputs/jar/release/*.jar
+            **/build/keiyoushi-source-info.json
+          retention-days: 1
