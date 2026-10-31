@@ -156,40 +156,41 @@ jobs:
             **/build/keiyoushi-source-info.json
           retention-days: 1
 
-  generate-index:
-    name: Generate Index
-    needs: build-extensions
+  publish:
+    name: Publish extension repo
+    needs: [prepare, build-extensions]
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
-      - name: Checkout code
+      - name: Download APK artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ~/apk-artifacts
+
+      - name: Checkout main branch
         uses: actions/checkout@v4
         with:
-          persist-credentials: true
+          ref: main
+          path: main
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
-      - name: Install dependencies
-        run: pip install protobuf
-
-      - name: Generate Repository Index
+      - name: Generate and publish index
         run: |
-          python .github/scripts/publish-repo.py "" "$GITHUB_SHA" "true" || true
-
-      - name: Move index to root
-        run: |
-          if [ -f "repo/index.json" ]; then
-            cp repo/index.json ./index.json
-          elif [ -f "index.json" ]; then
-            echo "Index already in root"
+          python -m pip install --upgrade pip
+          pip install protobuf
+          python -u main/.github/scripts/publish-repo.py "" "$GITHUB_SHA" "true" || true
+          
+          if [ -d "repo" ] && [ -f "repo/index.json" ]; then
+            cp repo/index.json main/index.json
           fi
 
-      - name: Commit and Push Index
-        run: |
+          cd main
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add index.json || true
-          git commit -m "Update index.json" || echo "No changes to commit"
-          git push origin main || true
+          git commit -m "Update index.json" || echo "No changes"
+          git push
